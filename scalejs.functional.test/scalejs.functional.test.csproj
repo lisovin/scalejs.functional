@@ -24,12 +24,12 @@
     <Content Include="Scripts\require.js" />
     <Content Include="Scripts\scalejs-0.2.7.28.js" />
     <Content Include="Scripts\scalejs-0.2.7.28.min.js" />
-    <Content Include="Scripts\scalejs.functional-0.2.0.js" />
-    <Content Include="Scripts\scalejs.functional-0.2.0.min.js" />
+    <Content Include="Scripts\scalejs.functional-0.2.1.js" />
+    <Content Include="Scripts\scalejs.functional-0.2.2.js" />
+    <Content Include="Scripts\scalejs.functional-0.2.2.min.js" />
     <Content Include="test\all.tests.js" />
     <Content Include="test\builder.test.js" />
     <Content Include="test\functional.test.js" />
-    <Content Include="test\scalejs.functional.test.js" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

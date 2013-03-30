@@ -154,6 +154,7 @@ define('scalejs.functional/builder',[
     
 
     var merge = core.object.merge,
+        clone = core.object.clone,
         array = core.array;
 
     function builder(opts) {
@@ -187,30 +188,26 @@ define('scalejs.functional/builder',[
                         method === '$YIELD';
             }
 
-            if (typeof opts[method] !== 'function') {
+            if (typeof opts[method] !== 'function' &&
+                method !== '$then' &&
+                method !== '$else') {
                 throw new Error('This control construct may only be used if the computation expression builder ' +
                                 'defines a `' + method + '` method.');
             }
 
-            var e = callExpr(context, expr);
+            var e = callExpr(context, expr),
+                contextCopy,
+                cexprCopy;
 
-            if (cexpr.length > 0) {
-                if (typeof opts.combine !== 'function') {
-                    throw new Error('This control construct may only be used if the computation expression builder ' +
-                                    'defines a `combine` method.');
-                }
-                // if it's not a return then simply combine the operations (e.g. no `delay` needed)
-                if (!isReturnLikeMethod(method)) {
-                    if (method === '$for') {
-                        return opts.combine(opts.$for(expr.items, function (item) {
-                            var cexpr = array.copy(expr.cexpr),
-                                ctx = merge(context);
-                            ctx[expr.name] = item;
-                            return build(ctx, cexpr);
-                        }), build(context, cexpr));
-                    }
+            if (cexpr.length > 0 && typeof opts.combine !== 'function') {
+                throw new Error('This control construct may only be used if the computation expression builder ' +
+                                'defines a `combine` method.');
+            }
 
-                    return opts.combine(opts[method].call(context, e), build(context, cexpr));
+            // if it's return then simply return
+            if (isReturnLikeMethod(method)) {
+                if (cexpr.length == 0) {
+                    return opts[method].call(context, e);
                 }
 
                 if (typeof opts.delay !== 'function') {
@@ -218,19 +215,28 @@ define('scalejs.functional/builder',[
                                     'defines a `delay` method.');
                 }
 
-
                 // combine with delay
                 return opts.combine(opts[method].call(context, e), opts.delay.call(context, function () {
                     return build(context, cexpr);
                 }));
             }
 
-            // if it's return then simply return
-            if (isReturnLikeMethod(method)) {
-                return opts[method].call(context, e);
+            // if it's not a return then simply combine the operations (e.g. no `delay` needed)
+            if (method === '$for') {
+                return opts.combine(opts.$for(expr.items, function (item) {
+                    var cexpr = array.copy(expr.cexpr),
+                        ctx = merge(context);
+                    ctx[expr.name] = item;
+                    return build(ctx, cexpr);
+                }), build(context, cexpr));
             }
 
-            // combine non-return operation with `zero`                
+            if (method === '$then' || method === '$else') {
+                contextCopy = clone(context);
+                cexprCopy = array.copy(expr.cexpr);
+                return opts.combine(build(contextCopy, cexprCopy), cexpr); 
+            }
+
             return opts.combine(opts[method].call(context, e), build(context, cexpr));
         }
 
@@ -247,6 +253,8 @@ define('scalejs.functional/builder',[
         }
 
         build = function (context, cexpr) {
+            var contextCopy, expr;
+
             if (cexpr.length === 0) {
                 if (opts.zero) {
                     return opts.zero();
@@ -255,7 +263,7 @@ define('scalejs.functional/builder',[
                 throw new Error('Computation expression builder must define `zero` method.');
             }
 
-            var expr = cexpr.shift();
+            expr = cexpr.shift();
 
             if (expr.kind === 'let') {
                 context[expr.name] = callExpr(context, expr.expr);
@@ -288,7 +296,23 @@ define('scalejs.functional/builder',[
             }
 
             if (expr.kind === '$for') {
-                return combine('$for', context, expr, cexpr);
+                return combine(expr.kind, context, expr, cexpr);
+            }
+
+            if (expr.kind === '$if') {
+                if (expr.condition.call(context)) {
+                    //contextCopy = clone(context);
+                    return combine('$then', context, expr.thenExpr, cexpr);
+                    //return combine(build(contextCopy, expr.thenExpr.cexpr), cexpr);
+                }
+
+                if (expr.elseExpr) {
+                    return combine('$else', context, expr.elseExpr, cexpr);
+                    //contextCopy = clone(context);
+                    //return combine(build(contextCopy, expr.elseExpr.cexpr), cexpr);
+                }
+
+                return combine(build(context, []), cexpr);
             }
 
             if (typeof expr === 'function' && opts.call) {
@@ -427,6 +451,60 @@ define('scalejs.functional/builder',[
             kind: '$for',
             name: name,
             items: items,
+            cexpr: cexpr
+        };
+    };
+
+    builder.$if = function (condition, thenExpr, elseExpr) {
+        if (arguments.length < 2) {
+            throw new Error('Incomplete conditional. Expected "$if(<expr>, $then(expr))" or ' +
+                            '"$if(<expr>, $then(<expr>), $else(<expr>)"');
+        }
+
+        if (typeof condition !== 'function') {
+            throw new Error('First argument must be a function that defines the condition of $if.');
+        }
+
+        if (thenExpr.kind !== '$then') {
+            throw new Error('Unexpected "' + thenExpr.kind + '" in the place of "$then"');
+        }
+
+        if (elseExpr) {
+            if (elseExpr.kind !== '$else') {
+                throw new Error('Unexpected "' + elseExpr.kind + '" in the place of "$else"');
+            }
+        }
+
+        return {
+            kind: '$if',
+            condition: condition,
+            thenExpr: thenExpr,
+            elseExpr: elseExpr
+        };
+    };
+
+    builder.$then = function () {
+        var cexpr = Array.prototype.slice.call(arguments, 0);
+
+        if (cexpr.length === 0) {
+            throw new Error('$then should contain at least one expression.');
+        }
+
+        return {
+            kind: '$then',
+            cexpr: cexpr
+        };
+    };
+
+    builder.$else = function () {
+        var cexpr = Array.prototype.slice.call(arguments, 0);
+
+        if (cexpr.length === 0) {
+            throw new Error('$else should contain at least one expression.');
+        }
+
+        return {
+            kind: '$else',
             cexpr: cexpr
         };
     };

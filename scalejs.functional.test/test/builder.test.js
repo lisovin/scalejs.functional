@@ -1,4 +1,4 @@
-﻿/*global require,define,describe,expect,it,console,runs,waits,setTimeout*/
+﻿/*global require,define,jasmine,describe,expect,it,console,runs,waits,setTimeout*/
 /*jslint nomen:true*/
 /// <reference path="../Scripts/jasmine.js"/>
 define([
@@ -18,6 +18,9 @@ define([
         $do = core.functional.builder.$do,
         $DO = core.functional.builder.$DO,
         $for = core.functional.builder.$for,
+        $if = core.functional.builder.$if,
+        $then = core.functional.builder.$then,
+        $else = core.functional.builder.$else,
         $ = core.functional.builder.$;
 
     describe('computation expression builder', function () {
@@ -414,8 +417,6 @@ define([
             expect(a).toEqual([0, 1, 2, 2, 4, 5]);
         });
 
-    }),
-    /*
         it('`if` filters values.', function () {
             var arrayBuilder, array, a;
 
@@ -424,6 +425,10 @@ define([
                     return f();
                 },
                 
+                zero: function () {
+                    return [];
+                },
+
                 combine: function (x, xs) {
                     return x.concat(xs);    
                 },
@@ -438,6 +443,7 @@ define([
 
                 $for: function (xs, f) {
                     return xs.reduce(function (acc, x) {
+                        console.log('--->x: ', x);
                         return acc.concat(f(x));
                     }, []);
                 }
@@ -446,22 +452,25 @@ define([
             array = arrayBuilder();
             a = array(
                 $yield(0),
-                $for('x', [1, 2], 
-                    $if($(function () { return this.x === 2; }), 
+                $for('x', [1, 2, 3], 
+                    $if(function () { return this.x % 2 === 0; }, 
                         $then(
                             $yield($('x')),
                             $YIELD($(function () {
                                 return [this.x * 2];
                             }))),
                         $else(
-                            $yield(0)))),
+                            $do(function () { 
+                                console.log('--->else', this.x);
+                            }),
+                            $yield($(function () { return -this.x; }))))),
                 $yield(5)
             );
 
-            expect(a).toEqual([0, 1, 2, 2, 4, 5]);
+            expect(a).toEqual([0, -1, 2, 4, -3, 5]);
         });
 
-    }),*/
+    }),
 
     describe('sample builders', function () {
         it('object builder', function () {
