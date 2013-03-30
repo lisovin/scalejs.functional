@@ -1,0 +1,10 @@
+
+/packages
+/scalejs.functional.v11.suo
+/.nuget/nuget.exe
+/scalejs.functional/build
+/scalejs.functional/obj
+/scalejs.functional/scalejs.functional.csproj.user
+/scalejs.functional.test/build
+/scalejs.functional.test/obj
+/scalejs.functional.test/scalejs.functional.test.csproj.user
