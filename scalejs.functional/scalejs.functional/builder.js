@@ -23,7 +23,7 @@ define([
 
         function callExpr(context, expr) {
             if (!expr || expr.kind !== '$') {
-                return expr;
+                return typeof expr === 'function' ? expr.bind(context) : expr;
             }
 
             if (typeof expr.expr === 'function') {
@@ -64,7 +64,7 @@ define([
             // if it's return then simply return
             if (isReturnLikeMethod(method)) {
                 if (cexpr.length === 0) {
-                    return opts[method].call(context, e);
+                    return opts[method](e);
                 }
 
                 if (typeof opts.delay !== 'function') {
@@ -73,7 +73,7 @@ define([
                 }
 
                 // combine with delay
-                return opts.combine(opts[method].call(context, e), opts.delay.call(context, function () {
+                return opts.combine(opts[method](e), opts.delay(function () {
                     return build(context, cexpr);
                 }));
             }
@@ -88,13 +88,32 @@ define([
                 }), build(context, cexpr));
             }
 
+            if (method === '$while') {
+                if (typeof opts.delay !== 'function') {
+                    throw new Error('This control construct may only be used if the computation expression builder ' +
+                                    'defines a `delay` method.');
+                }
+
+                e = opts.$while(expr.condition.bind(context), opts.delay(function () {
+                    var contextCopy = clone(context),
+                        cexprCopy = array.copy(expr.cexpr);
+                    return build(contextCopy, cexprCopy);
+                }));
+
+                if (cexpr.length > 0) {
+                    return opts.combine(e, build(context, cexpr));
+                }
+
+                return e;
+            }
+
             if (method === '$then' || method === '$else') {
                 contextCopy = clone(context);
                 cexprCopy = array.copy(expr.cexpr);
                 return opts.combine(build(contextCopy, cexprCopy), cexpr);
             }
 
-            return opts.combine(opts[method].call(context, e), build(context, cexpr));
+            return opts.combine(opts[method](e), build(context, cexpr));
         }
 
         if (!opts.missing) {
@@ -133,14 +152,14 @@ define([
             }
 
             if (expr.kind === 'letBind') {
-                return opts.bind.call(context, callExpr(context, expr.expr), function (bound) {
+                return opts.bind(callExpr(context, expr.expr), function (bound) {
                     context[expr.name] = bound;
                     return build(context, cexpr);
                 });
             }
 
             if (expr.kind === 'doBind' || expr.kind === '$') {
-                return opts.bind.call(context, expr.expr.bind(context), function () {
+                return opts.bind(callExpr(context, expr.expr), function () {
                     return build(context, cexpr);
                 });
             }
@@ -152,21 +171,18 @@ define([
                 return combine(expr.kind, context, expr.expr, cexpr);
             }
 
-            if (expr.kind === '$for') {
+            if (expr.kind === '$for' ||
+                    expr.kind === '$while') {
                 return combine(expr.kind, context, expr, cexpr);
             }
 
             if (expr.kind === '$if') {
                 if (expr.condition.call(context)) {
-                    //contextCopy = clone(context);
                     return combine('$then', context, expr.thenExpr, cexpr);
-                    //return combine(build(contextCopy, expr.thenExpr.cexpr), cexpr);
                 }
 
                 if (expr.elseExpr) {
                     return combine('$else', context, expr.elseExpr, cexpr);
-                    //contextCopy = clone(context);
-                    //return combine(build(contextCopy, expr.elseExpr.cexpr), cexpr);
                 }
 
                 return combine(build(context, []), cexpr);
@@ -308,6 +324,20 @@ define([
             kind: '$for',
             name: name,
             items: items,
+            cexpr: cexpr
+        };
+    };
+
+    builder.$while = function (condition) {
+        if (arguments.length < 2) {
+            throw new Error('Incomplete `while`. Expected "$while(<condition>, <expr>)".');
+        }
+
+        var cexpr = Array.prototype.slice.call(arguments, 1);
+
+        return {
+            kind: '$while',
+            condition: condition,
             cexpr: cexpr
         };
     };

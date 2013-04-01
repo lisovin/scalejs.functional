@@ -21,6 +21,7 @@ define([
         $if = core.functional.builder.$if,
         $then = core.functional.builder.$then,
         $else = core.functional.builder.$else,
+        $while = core.functional.builder.$while,
         $ = core.functional.builder.$;
 
     describe('computation expression builder', function () {
@@ -417,7 +418,7 @@ define([
             expect(a).toEqual([0, 1, 2, 2, 4, 5]);
         });
 
-        it('`if` filters values.', function () {
+        it('`$if` filters values.', function () {
             var arrayBuilder, array, a;
 
             arrayBuilder = builder({
@@ -470,6 +471,52 @@ define([
             expect(a).toEqual([0, -1, 2, 4, -3, 5]);
         });
 
+        it('`$while` generates values.', function () {
+            var arrayBuilder, array, a;
+
+            arrayBuilder = builder({
+                bind: function (x, f) {
+                    return x.concat(f());
+                },
+                delay: function (f) {
+                    return f;
+                },
+                run: function (f) {
+                    return f();
+                },
+                combine: function (x, f) {
+                    return this.bind(x, f);
+                },
+                zero: function () {
+                    return [];
+                },
+                $yield: function (x) {
+                    return [x];
+                },
+                $while: function (condition, body) {
+                    var self = this;
+                    console.log(this);
+                    if (condition()) {
+                        return this.bind(body(), function () {
+                            return self.$while(condition, body);
+                        });
+                    } 
+                    return this.zero();
+                }
+            });
+
+            array = arrayBuilder();
+            var x = 5;
+            a = array(
+                $while(function () { return x > 0; }, 
+                    $yield($(function () { return x; })),
+                    $do(function () {
+                        x -= 1;
+                    }))
+            );
+
+            expect(a).toEqual([5, 4, 3, 2, 1]);
+        });
     }),
 
     describe('sample builders', function () {
