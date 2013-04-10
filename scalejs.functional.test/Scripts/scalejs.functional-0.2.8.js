@@ -302,8 +302,19 @@ define('scalejs.functional/builder',[
             }
 
             if (expr.kind === 'doBind' || expr.kind === '$') {
+                if (cexpr.length > 0) {
+                    return opts.bind(callExpr(context, expr.expr), function () {
+                        return build(context, cexpr);
+                    });
+                }
+
+                if (typeof opts.$return !== 'function') {
+                    throw new Error('This control construct may only be used if the computation expression builder ' +
+                                    'defines a `$return` method.');
+                }
+
                 return opts.bind(callExpr(context, expr.expr), function () {
-                    return build(context, cexpr);
+                    return opts.$return();
                 });
             }
 
@@ -549,20 +560,68 @@ define('scalejs.functional/builder',[
     return builder;
 });
 
-/*global define*/
-define('scalejs.functional',[
-    'scalejs!core',
-    './scalejs.functional/functional',
-    './scalejs.functional/builder'
+/*global define,console,document*/
+/*jslint nomen: true*/
+define('scalejs.functional/completeBuilder',[
+    './builder'
 ], function (
-    core,
-    functional,
     builder
 ) {
     
 
+    var completeBuilder = builder({
+        bind: function (x, f) {
+            // x: function (completed) {...}
+            // f: function (bound) {
+            //      ...
+            //      return function (completed) {...}
+            //    }
+            // completed: function (result) {...}
+            return function (completed) {
+                // Therefore to $let we pass result of x into f which would return "completable" funciton.
+                // Then we simply pass completed into that function and we are done.
+                return x(function (xResult) {
+                    var rest = f(xResult);
+                    rest(completed);
+                });
+            };
+        },
+
+        $return: function (x) {
+            return function (complete) {
+                if (complete) {
+                    complete(x);
+                }
+            };
+        }
+    });
+
+    return completeBuilder();
+});
+
+/*global define*/
+define('scalejs.functional',[
+    'scalejs!core',
+    './scalejs.functional/functional',
+    './scalejs.functional/builder',
+    './scalejs.functional/completeBuilder'
+], function (
+    core,
+    functional,
+    builder,
+    complete
+) {
+    
+
+    var merge = core.object.merge;
+
     core.registerExtension({
-        functional: core.object.merge(functional, { builder: builder })
+        functional: merge(functional, {
+            builder: builder,
+            builders: {
+                complete: complete
+            }
+        })
     });
 });
 

@@ -2,16 +2,25 @@
 define([
     'scalejs!core',
     './scalejs.functional/functional',
-    './scalejs.functional/builder'
+    './scalejs.functional/builder',
+    './scalejs.functional/completeBuilder'
 ], function (
     core,
     functional,
-    builder
+    builder,
+    complete
 ) {
     'use strict';
 
+    var merge = core.object.merge;
+
     core.registerExtension({
-        functional: core.object.merge(functional, { builder: builder })
+        functional: merge(functional, {
+            builder: builder,
+            builders: {
+                complete: complete
+            }
+        })
     });
 });
 

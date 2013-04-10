@@ -14,6 +14,7 @@
       <SubType>Designer</SubType>
     </Content>
     <Content Include="scalejs.functional.js" />
+    <Content Include="scalejs.functional\completeBuilder.js" />
     <Content Include="scalejs.functional\functional.js" />
     <Content Include="scalejs.functional\builder.js" />
     <Content Include="Scripts\es5-shim.js" />

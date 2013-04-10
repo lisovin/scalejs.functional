@@ -3,7 +3,8 @@ define([
     'jasmine-html',
     'scalejs!application',
     './functional.test',
-    './builder.test'
+    './builder.test',
+    './completeBuilder.test'
 ], function () {
     'use strict';
 
