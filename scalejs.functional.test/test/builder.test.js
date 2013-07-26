@@ -564,7 +564,7 @@ define([
                 m;
 
             maybeBuilder = builder({
-                $let: function (x, f) {
+                bind: function (x, f) {
                     var v = x.call(this);
                     console.log('--->v: ', v);
 
@@ -617,12 +617,15 @@ define([
                 m3 = { '3': 'Three' };
 
             orElseBuilder = builder({
-                $returnFrom: function (x) {
+                $RETURN: function (x) {
                     console.log('-->returning ', x);
                     return x;
                 },
                 combine: function (x, y)  {
                     return x === undefined ? y : x;
+                },
+                delay: function (f) {
+                    return f();
                 }
             });
 
@@ -630,26 +633,26 @@ define([
 
             function multiLookup(key) {
                 function tryFind(m) {
-                    return m[key];
+                    return $RETURN(m[key]);
                 }
 
                 return orElse(
-                    $RETURN(tryFind(m1)),
-                    $RETURN(tryFind(m2)),
-                    $RETURN(tryFind(m3))
+                    tryFind(m1),
+                    tryFind(m2),
+                    tryFind(m3)
                 );
             }
 
             expect(multiLookup('2')).toBe('Two');
         });
 
-        it('$dos', function () {
+        it('trace', function () {
             var traceBuilder, 
                 trace,
                 t;
 
             traceBuilder = builder({
-                $let: function (x, f) {
+                bind: function (x, f) {
                     console.log(f);
                     if (x === undefined) {
                         console.log('--->$leting with undefined. exiting.');
@@ -691,38 +694,21 @@ define([
                 s;
 
             stateBuilder = builder({
-                $let: function (x, f) {
+                bind: function (x, f) {
                     return function (state) {
                         x(state);
                         var s = f();
                         s(state);
                     };
                 },
-                /*
-                run: function (f) {
-                    //console.log(f);
 
-                    var s = {};
-                    f(s);
-                    return s;
-                },*/
-                $return: function (s) {
-                    return s;
+                $return: function (f) {
+                    return f();
                 }
             });
 
             state = stateBuilder();
-            /*
-            s = state(
-                $(function (state) {
-                    state.foo = 'bar';
-                }),
-                $(function (state) {
-                    state.bar = 'foo';
-                })
-            );*/
 
-            //console.log('--->final state', s);
 
             s = state(
                 $let('state', {}),
@@ -731,8 +717,8 @@ define([
                 },
                 function (state) {
                     this.state.bar = 'foo';
-                }
-                //$return($('state'))
+                },
+                $return(function () { return this.state; })
             );
 
             console.log('--->final state', s);
@@ -755,23 +741,16 @@ define([
             }
 
             stateBuilder = builder({
-                run: function (f) {
-                    var s = {};
-                    f(s);
-                    return s;
-                },
-
-                combine: function (f, g) {
+                bind: function (x, f) {
                     return function (state) {
-                        f(state);
-                        g(state);
+                        x(state);
+                        var s = f();
+                        s(state);
                     };
                 },
 
-                missing: function (expr) {
-                    if (typeof expr === 'function') {
-                        return expr;
-                    }
+                $return: function (f) {
+                    return f();
                 }
             });
 
@@ -779,12 +758,14 @@ define([
             var state2 = state1.mixin(interceptor);
             
             s = state2(
-                function (state) {
-                    state.foo = 'bar';
+                $let('state', {}),
+                function () {
+                    this.state.foo = 'bar';
                 },
-                function (state) {
-                    state.bar = 'foo';
-                }
+                function () {
+                    this.state.bar = 'foo';
+                },
+                $return(function () { return this.state; })
             );
 
             console.log('--->final state', s);
