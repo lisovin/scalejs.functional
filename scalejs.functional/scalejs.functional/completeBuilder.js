@@ -18,10 +18,10 @@ define([
             return function (completed) {
                 // Therefore to $let we pass result of x into f which would return "completable" funciton.
                 // Then we simply pass completed into that function and we are done.
-                return x(function (xResult) {
+                return x.bind(this)(function (xResult) {
                     var rest = f(xResult);
-                    rest(completed);
-                });
+                    rest.bind(this)(completed);
+                }.bind(this));
             };
         },
 

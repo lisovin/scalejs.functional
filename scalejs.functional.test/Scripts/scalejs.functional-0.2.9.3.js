@@ -7,7 +7,8 @@
 define('scalejs.functional/functional',[],function () {
     
 
-    var _ = {};
+    var _ = {},
+        curry;
 
     function compose() {
         /// <summary>
@@ -89,24 +90,6 @@ define('scalejs.functional/functional',[],function () {
         };
     }
 
-    function curry(fn, n) {
-        if (arguments.length === 1) {
-            return curry(fn, fn.length);
-        }
-
-        var largs = Array.prototype.slice.call(arguments, 2);
-
-        if (largs.length >= n) {
-            return fn.apply(undefined, largs);
-        }
-
-        return function () {
-            var args = largs.concat(Array.prototype.slice.call(arguments, 0));
-            args.unshift(fn, n);
-            return curry.apply(undefined, args);
-        };
-    }
-
     // partial itself is partial, e.g. partial(_, a, _)(f) = partial(f, a, _)
     function partial() {
         var args = Array.prototype.slice.call(arguments, 0),
@@ -129,6 +112,25 @@ define('scalejs.functional/functional',[],function () {
             return partial.apply(undefined, args);
         };
     }
+
+    curry = function (fn, n) {
+        if (arguments.length === 1) {
+            return curry(fn, fn.length);
+        }
+
+        var largs = Array.prototype.slice.call(arguments, 2);
+
+        if (largs.length >= n) {
+            return fn.apply(this, largs);
+        }
+
+        return function () {
+            var args = largs.concat(Array.prototype.slice.call(arguments, 0));
+            args.unshift(fn, n);
+            return curry.apply(this, args);
+        };
+    };
+
 
     return {
         _: _,
@@ -153,34 +155,32 @@ define('scalejs.functional/builder',[
 ) {
     
 
-    var merge = core.object.merge,
-        clone = core.object.clone,
+    var //merge = core.object.merge,
+        //clone = core.object.clone,
         array = core.array;
 
+
     function builder(opts) {
-        var build;
+        var build,
+            self;
 
-        function buildContext() {
-            return {};
-        }
-
-        function callExpr(context, expr) {
+        function callExpr(expr) {
             if (!expr || expr.kind !== '$') {
-                return typeof expr === 'function' ? expr.bind(context) : expr;
+                return typeof expr === 'function' ? expr.bind(self) : expr;
             }
 
             if (typeof expr.expr === 'function') {
-                return expr.expr.call(context);
+                return expr.expr.call(self);
             }
 
             if (typeof expr.expr === 'string') {
-                return context[expr.expr];
+                return self[expr.expr];
             }
 
             throw new Error('Parameter in $(...) must be either a function or a string referencing a binding.');
         }
 
-        function combine(method, context, expr, cexpr) {
+        function combine(method, expr, cexpr) {
             function isReturnLikeMethod(method) {
                 return method === '$return' ||
                         method === '$RETURN' ||
@@ -188,18 +188,18 @@ define('scalejs.functional/builder',[
                         method === '$YIELD';
             }
 
-            if (typeof opts[method] !== 'function' &&
+            if (typeof self[method] !== 'function' &&
                     method !== '$then' &&
                     method !== '$else') {
                 throw new Error('This control construct may only be used if the computation expression builder ' +
                                 'defines a `' + method + '` method.');
             }
 
-            var e = callExpr(context, expr),
-                contextCopy,
+            var e = callExpr(expr),
+                //contextCopy,
                 cexprCopy;
 
-            if (cexpr.length > 0 && typeof opts.combine !== 'function') {
+            if (cexpr.length > 0 && typeof self.combine !== 'function') {
                 throw new Error('This control construct may only be used if the computation expression builder ' +
                                 'defines a `combine` method.');
             }
@@ -207,56 +207,56 @@ define('scalejs.functional/builder',[
             // if it's return then simply return
             if (isReturnLikeMethod(method)) {
                 if (cexpr.length === 0) {
-                    return opts[method](e);
+                    return self[method](e);
                 }
 
-                if (typeof opts.delay !== 'function') {
+                if (typeof self.delay !== 'function') {
                     throw new Error('This control construct may only be used if the computation expression builder ' +
                                     'defines a `delay` method.');
                 }
 
                 // combine with delay
-                return opts.combine(opts[method](e), opts.delay(function () {
-                    return build(context, cexpr);
+                return self.combine(self[method](e), self.delay(function () {
+                    return build(cexpr);
                 }));
             }
 
             // if it's not a return then simply combine the operations (e.g. no `delay` needed)
             if (method === '$for') {
-                return opts.combine(opts.$for(expr.items, function (item) {
-                    var cexpr = array.copy(expr.cexpr),
-                        ctx = merge(context);
-                    ctx[expr.name] = item;
-                    return build(ctx, cexpr);
-                }), build(context, cexpr));
+                return self.combine(self.$for(expr.items, function (item) {
+                    var cexpr = array.copy(expr.cexpr);
+                    //ctx = merge(context);
+                    self[expr.name] = item;
+                    return build(cexpr);
+                }), build(cexpr));
             }
 
             if (method === '$while') {
-                if (typeof opts.delay !== 'function') {
+                if (typeof self.delay !== 'function') {
                     throw new Error('This control construct may only be used if the computation expression builder ' +
                                     'defines a `delay` method.');
                 }
 
-                e = opts.$while(expr.condition.bind(context), opts.delay(function () {
-                    var contextCopy = clone(context),
+                e = self.$while(expr.condition.bind(self), self.delay(function () {
+                    var //contextCopy = clone(context),
                         cexprCopy = array.copy(expr.cexpr);
-                    return build(contextCopy, cexprCopy);
+                    return build(cexprCopy);
                 }));
 
                 if (cexpr.length > 0) {
-                    return opts.combine(e, build(context, cexpr));
+                    return self.combine(e, build(cexpr));
                 }
 
                 return e;
             }
 
             if (method === '$then' || method === '$else') {
-                contextCopy = clone(context);
+                //contextCopy = clone(context);
                 cexprCopy = array.copy(expr.cexpr);
-                return opts.combine(build(contextCopy, cexprCopy), cexpr);
+                return self.combine(build(cexprCopy), cexpr);
             }
 
-            return opts.combine(opts[method](e), build(context, cexpr));
+            return self.combine(self[method](e), build(cexpr));
         }
 
         if (!opts.missing) {
@@ -271,12 +271,14 @@ define('scalejs.functional/builder',[
             };
         }
 
-        build = function (context, cexpr) {
+        build = function (cexpr) {
             var expr;
 
+            cexpr = array.copy(cexpr);
+
             if (cexpr.length === 0) {
-                if (opts.zero) {
-                    return opts.zero();
+                if (self.zero) {
+                    return self.zero();
                 }
 
                 throw new Error('Computation expression builder must define `zero` method.');
@@ -285,36 +287,36 @@ define('scalejs.functional/builder',[
             expr = cexpr.shift();
 
             if (expr.kind === 'let') {
-                context[expr.name] = callExpr(context, expr.expr);
-                return build(context, cexpr);
+                self[expr.name] = callExpr(expr.expr);
+                return build(cexpr);
             }
 
             if (expr.kind === 'do') {
-                expr.expr.call(context);
-                return build(context, cexpr);
+                expr.expr.call(self);
+                return build(cexpr);
             }
 
             if (expr.kind === 'letBind') {
-                return opts.bind(callExpr(context, expr.expr), function (bound) {
-                    context[expr.name] = bound;
-                    return build(context, cexpr);
+                return self.bind(expr.expr, function (bound) {
+                    self[expr.name] = bound;
+                    return build(cexpr);
                 });
             }
 
             if (expr.kind === 'doBind' || expr.kind === '$') {
                 if (cexpr.length > 0) {
-                    return opts.bind(callExpr(context, expr.expr), function () {
-                        return build(context, cexpr);
+                    return self.bind(expr.expr, function () {
+                        return build(cexpr);
                     });
                 }
 
-                if (typeof opts.$return !== 'function') {
+                if (typeof self.$return !== 'function') {
                     throw new Error('This control construct may only be used if the computation expression builder ' +
                                     'defines a `$return` method.');
                 }
 
-                return opts.bind(callExpr(context, expr.expr), function () {
-                    return opts.$return();
+                return self.bind(expr.expr, function () {
+                    return self.$return();
                 });
             }
 
@@ -322,67 +324,83 @@ define('scalejs.functional/builder',[
                     expr.kind === '$RETURN' ||
                     expr.kind === '$yield' ||
                     expr.kind === '$YIELD') {
-                return combine(expr.kind, context, expr.expr, cexpr);
+                return combine(expr.kind, expr.expr, cexpr);
             }
 
             if (expr.kind === '$for' ||
                     expr.kind === '$while') {
-                return combine(expr.kind, context, expr, cexpr);
+                return combine(expr.kind, expr, cexpr);
             }
 
             if (expr.kind === '$if') {
-                if (expr.condition.call(context)) {
-                    return combine('$then', context, expr.thenExpr, cexpr);
+                if (expr.condition.call(self)) {
+                    return combine('$then', expr.thenExpr, cexpr);
                 }
 
                 if (expr.elseExpr) {
-                    return combine('$else', context, expr.elseExpr, cexpr);
+                    return combine('$else', expr.elseExpr, cexpr);
                 }
 
-                return combine(build(context, []), cexpr);
+                return combine(build([]), cexpr);
             }
 
-            if (typeof expr === 'function' && opts.call) {
-                opts.call(context, expr);
-                return build(context, cexpr);
+            if (typeof expr === 'function' && self.call) {
+                self.call(expr);
+                return build(cexpr);
             }
 
             if (typeof expr === 'function') {
-                expr.call(context, expr);
-                return build(context, cexpr);
+                expr.call(self);
+                return build(cexpr);
             }
 
-            return combine('missing', context, expr, cexpr);
+            return combine('missing', expr, cexpr);
         };
 
         return function () {
             var args = array.copy(arguments),
                 expression = function () {
                     var operations = Array.prototype.slice.call(arguments, 0),
-                        context = buildContext(),
                         result,
-                        toRun;
+                        delayed,
+                        //run,
+                        built;
+
+
+                    // Copy all opts to `self`. Nothing special (e.g. recursion, etc.) is required since opts
+                    // must be a flat object with builder methods
+                    self = {};
+                    Object.keys(opts).forEach(function (key) {
+                        self[key] = opts[key];
+                    });
 
                     if (this.mixins) {
                         this.mixins.forEach(function (mixin) {
                             if (mixin.beforeBuild) {
-                                mixin.beforeBuild(context, operations);
+                                mixin.beforeBuild(operations);
                             }
                         });
                     }
 
-                    if (opts.delay) {
-                        toRun = opts.delay(function () {
-                            return build(context, operations);
-                        });
-                    } else {
-                        toRun = build(context, operations);
-                    }
+                    built = function () {
+                        return build(operations);
+                    };
 
-                    if (opts.run) {
-                        result = opts.run.apply(null, [toRun].concat(args));
+                    if (!self.run && !self.delay) {
+                        result = built();
                     } else {
-                        result = toRun;
+                        if (self.delay) {
+                            delayed = built;
+                            built = function () {
+                                return self.delay(delayed);
+                            };
+                        }
+
+                        result = built();
+
+                        if (self.run) {
+                            result = self.run.apply(self, [result].concat(args));
+                        }
                     }
 
                     if (this.mixins) {
@@ -397,7 +415,7 @@ define('scalejs.functional/builder',[
                 };
 
             function mixin() {
-                var context = {mixins: Array.prototype.slice.call(arguments, 0)},
+                var context = { mixins: Array.prototype.slice.call(arguments, 0) },
                     bound = expression.bind(context);
                 bound.mixin = function () {
                     Array.prototype.push.apply(context.mixins, arguments);
@@ -580,10 +598,10 @@ define('scalejs.functional/completeBuilder',[
             return function (completed) {
                 // Therefore to $let we pass result of x into f which would return "completable" funciton.
                 // Then we simply pass completed into that function and we are done.
-                return x(function (xResult) {
+                return x.bind(this)(function (xResult) {
                     var rest = f(xResult);
-                    rest(completed);
-                });
+                    rest.bind(this)(completed);
+                }.bind(this));
             };
         },
 

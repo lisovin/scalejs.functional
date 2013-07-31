@@ -32,14 +32,18 @@ define([
                 setTimeout(function () {
                     console.log('--->new x:', x);
                     x += 1;
-                    complete(x);
+                    complete();
                 }, timeout);
             }
 
+            function f_(timeout) {
+                return $DO(curry(f)(timeout));
+            }
+
             var c = complete(
-                $DO(curry(f)(10)),
-                $DO(curry(f)(5)),
-                $DO(curry(f)(20))
+                f_(10),
+                f_(5),
+                f_(20)
             );
 
             c(function (r) {
@@ -60,14 +64,18 @@ define([
                 setTimeout(function () {
                     console.log('--->new x:', x);
                     x += 1;
-                    complete(x);
+                    complete();
                 }, timeout);
             }
 
+            function f_(timeout) {
+                return $DO(curry(f)(timeout));
+            }
+
             var c = complete(
-                $DO(curry(f)(10)),
-                $DO(curry(f)(5)),
-                $DO(curry(f)(20))
+                f_(10),
+                f_(5),
+                f_(20)
             );
 
             c();
@@ -107,6 +115,34 @@ define([
 
             runs(function () {
                 expect(x).toBe(3);
+            });
+        });
+
+        it('`this` is maintained throught the chain of calls.', function () {
+            function f(timeout, complete) {
+                setTimeout(function () {
+                    this.x += 1;
+                    complete();
+                }.bind(this), timeout);
+            }
+
+            function f_(timeout) {
+                return $DO(curry(f)(timeout));
+            }
+
+            var c = complete(
+                f_(10),
+                f_(5),
+                f_(20)
+            );
+
+            var ctx = { x : 0 };
+            c.call(ctx);
+
+            waits(100);
+
+            runs(function () {
+                expect(ctx.x).toBe(3);
             });
         });
     });

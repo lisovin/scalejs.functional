@@ -6,7 +6,8 @@
 define(function () {
     'use strict';
 
-    var _ = {};
+    var _ = {},
+        curry;
 
     function compose() {
         /// <summary>
@@ -88,24 +89,6 @@ define(function () {
         };
     }
 
-    function curry(fn, n) {
-        if (arguments.length === 1) {
-            return curry(fn, fn.length);
-        }
-
-        var largs = Array.prototype.slice.call(arguments, 2);
-
-        if (largs.length >= n) {
-            return fn.apply(undefined, largs);
-        }
-
-        return function () {
-            var args = largs.concat(Array.prototype.slice.call(arguments, 0));
-            args.unshift(fn, n);
-            return curry.apply(undefined, args);
-        };
-    }
-
     // partial itself is partial, e.g. partial(_, a, _)(f) = partial(f, a, _)
     function partial() {
         var args = Array.prototype.slice.call(arguments, 0),
@@ -128,6 +111,25 @@ define(function () {
             return partial.apply(undefined, args);
         };
     }
+
+    curry = function (fn, n) {
+        if (arguments.length === 1) {
+            return curry(fn, fn.length);
+        }
+
+        var largs = Array.prototype.slice.call(arguments, 2);
+
+        if (largs.length >= n) {
+            return fn.apply(this, largs);
+        }
+
+        return function () {
+            var args = largs.concat(Array.prototype.slice.call(arguments, 0));
+            args.unshift(fn, n);
+            return curry.apply(this, args);
+        };
+    };
+
 
     return {
         _: _,

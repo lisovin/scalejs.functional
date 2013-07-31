@@ -724,7 +724,7 @@ define([
             console.log('--->final state', s);
         });
 
-        it('interceptor', function () {
+        it('mixin', function () {
             var stateBuilder,
                 state,
                 s,
@@ -771,5 +771,6 @@ define([
             console.log('--->final state', s);
 
         });
+
     });
 });
