@@ -8,28 +8,41 @@ define([
     'use strict';
 
     var completeBuilder = builder({
-        bind: function (x, f) {
-            // x: function (completed) {...}
-            // f: function (bound) {
-            //      ...
-            //      return function (completed) {...}
+        bind: function (f, g) {
+            // `f` is a function that would invoke a callback once they are completed.
+            // E.g.:
+            // f: function (completed) { 
+            //        ...
+            //        completed(result); 
             //    }
-            // completed: function (result) {...}
+            // 
+            // `g` is a function that needs to be bound to result of `f` and its result should have the same signature as `f`
+            // 
+            // To bind them we should return a function `h` with same signature such as `f`
             return function (completed) {
-                // Therefore to $let we pass result of x into f which would return "completable" funciton.
-                // Then we simply pass completed into that function and we are done.
-                return x.bind(this)(function (xResult) {
-                    var rest = f(xResult);
-                    rest.bind(this)(completed);
-                }.bind(this));
+                f(function (fResult) {
+                    var rest = g(fResult);
+                    return rest(completed);
+                });
             };
         },
 
         $return: function (x) {
-            return function (complete) {
-                if (complete) {
-                    complete(x);
+            return function (completed) {
+                if (completed) {
+                    completed(x);
                 }
+            };
+        },
+
+        delay: function (f) {
+            return f;
+        },
+
+        run: function (f) {
+            return function (completed) {
+                var delayed = f.bind(this)().bind(this);
+                delayed(completed);
             };
         }
     });

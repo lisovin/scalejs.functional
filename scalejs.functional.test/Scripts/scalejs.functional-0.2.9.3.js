@@ -166,15 +166,15 @@ define('scalejs.functional/builder',[
 
         function callExpr(expr) {
             if (!expr || expr.kind !== '$') {
-                return typeof expr === 'function' ? expr.bind(self) : expr;
+                return typeof expr === 'function' ? expr.call(this) : expr;
             }
 
             if (typeof expr.expr === 'function') {
-                return expr.expr.call(self);
+                return expr.expr.call(this);
             }
 
             if (typeof expr.expr === 'string') {
-                return self[expr.expr];
+                return this[expr.expr];
             }
 
             throw new Error('Parameter in $(...) must be either a function or a string referencing a binding.');
@@ -217,7 +217,7 @@ define('scalejs.functional/builder',[
 
                 // combine with delay
                 return self.combine(self[method](e), self.delay(function () {
-                    return build(cexpr);
+                    return build.call(this, cexpr);
                 }));
             }
 
@@ -226,9 +226,9 @@ define('scalejs.functional/builder',[
                 return self.combine(self.$for(expr.items, function (item) {
                     var cexpr = array.copy(expr.cexpr);
                     //ctx = merge(context);
-                    self[expr.name] = item;
-                    return build(cexpr);
-                }), build(cexpr));
+                    this[expr.name] = item;
+                    return build.call(this, cexpr);
+                }), build.call(this, cexpr));
             }
 
             if (method === '$while') {
@@ -287,27 +287,27 @@ define('scalejs.functional/builder',[
             expr = cexpr.shift();
 
             if (expr.kind === 'let') {
-                self[expr.name] = callExpr(expr.expr);
-                return build(cexpr);
+                this[expr.name] = callExpr(expr.expr);
+                return build.call(this, cexpr);
             }
 
             if (expr.kind === 'do') {
-                expr.expr.call(self);
-                return build(cexpr);
+                expr.expr.call(this);
+                return build.call(this, cexpr);
             }
 
             if (expr.kind === 'letBind') {
-                return self.bind(expr.expr, function (bound) {
-                    self[expr.name] = bound;
-                    return build(cexpr);
-                });
+                return self.bind(expr.expr.bind(this), function (bound) {
+                    this[expr.name] = bound;
+                    return build.call(this, cexpr);
+                }.bind(this));
             }
 
             if (expr.kind === 'doBind' || expr.kind === '$') {
                 if (cexpr.length > 0) {
-                    return self.bind(expr.expr, function () {
-                        return build(cexpr);
-                    });
+                    return self.bind(expr.expr.bind(this), function () {
+                        return build.call(this, cexpr);
+                    }.bind(this));
                 }
 
                 if (typeof self.$return !== 'function') {
@@ -315,8 +315,8 @@ define('scalejs.functional/builder',[
                                     'defines a `$return` method.');
                 }
 
-                return self.bind(expr.expr, function () {
-                    return self.$return();
+                return self.bind(expr.expr.bind(this), function (x) {
+                    return self.$return(x);
                 });
             }
 
@@ -333,7 +333,7 @@ define('scalejs.functional/builder',[
             }
 
             if (expr.kind === '$if') {
-                if (expr.condition.call(self)) {
+                if (expr.condition.call(this)) {
                     return combine('$then', expr.thenExpr, cexpr);
                 }
 
@@ -345,13 +345,13 @@ define('scalejs.functional/builder',[
             }
 
             if (typeof expr === 'function' && self.call) {
-                self.call(expr);
-                return build(cexpr);
+                self.call(this);
+                return build.call(this, cexpr);
             }
 
             if (typeof expr === 'function') {
-                expr.call(self);
-                return build(cexpr);
+                expr.call(this);
+                return build.call(this, cexpr);
             }
 
             return combine('missing', expr, cexpr);
@@ -383,7 +383,8 @@ define('scalejs.functional/builder',[
                     }
 
                     built = function () {
-                        return build(operations);
+                        // pass the execution context of the caller
+                        return build.call(this, operations);
                     };
 
                     if (!self.run && !self.delay) {
@@ -588,28 +589,41 @@ define('scalejs.functional/completeBuilder',[
     
 
     var completeBuilder = builder({
-        bind: function (x, f) {
-            // x: function (completed) {...}
-            // f: function (bound) {
-            //      ...
-            //      return function (completed) {...}
+        bind: function (f, g) {
+            // `f` is a function that would invoke a callback once they are completed.
+            // E.g.:
+            // f: function (completed) { 
+            //        ...
+            //        completed(result); 
             //    }
-            // completed: function (result) {...}
+            // 
+            // `g` is a function that needs to be bound to result of `f` and its result should have the same signature as `f`
+            // 
+            // To bind them we should return a function `h` with same signature such as `f`
             return function (completed) {
-                // Therefore to $let we pass result of x into f which would return "completable" funciton.
-                // Then we simply pass completed into that function and we are done.
-                return x.bind(this)(function (xResult) {
-                    var rest = f(xResult);
-                    rest.bind(this)(completed);
-                }.bind(this));
-            };
+                f(function (fResult) {
+                    var rest = g(fResult);
+                    return rest(completed);
+                });
+            }
+        },
+        
+        $return: function (x) {
+            return function (completed) {
+                if (completed) {
+                    completed(x);
+                }
+            }
         },
 
-        $return: function (x) {
-            return function (complete) {
-                if (complete) {
-                    complete(x);
-                }
+        delay: function (f) {
+            return f;
+        },
+
+        run: function (f) {
+            return function (completed) {
+                var delayed = f.bind(this)().bind(this);
+                delayed(completed);
             };
         }
     });

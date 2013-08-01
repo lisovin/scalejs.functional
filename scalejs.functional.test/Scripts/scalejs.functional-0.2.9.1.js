@@ -367,7 +367,7 @@ define('scalejs.functional/builder',[
 
                     // Copy all opts to `self`. Nothing special (e.g. recursion, etc.) is required since opts
                     // must be a flat object with builder methods
-                    self = {};
+                    self = { $context: {} };
                     Object.keys(opts).forEach(function (key) {
                         self[key] = opts[key];
                     });

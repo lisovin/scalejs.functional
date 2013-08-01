@@ -32,7 +32,7 @@ define([
                 setTimeout(function () {
                     console.log('--->new x:', x);
                     x += 1;
-                    complete();
+                    complete(x);
                 }, timeout);
             }
 
@@ -118,7 +118,7 @@ define([
             });
         });
 
-        it('`this` is maintained throught the chain of calls.', function () {
+        it('`this` is maintained throught the chain of `$DO`-s.', function () {
             function f(timeout, complete) {
                 setTimeout(function () {
                     this.x += 1;
@@ -143,6 +143,38 @@ define([
 
             runs(function () {
                 expect(ctx.x).toBe(3);
+            });
+        });
+
+        it('`this` is maintained throught the chain of `$do`-s.', function () {
+            function f(timeout) {
+                return function () {
+                    setTimeout(function () {
+                        this.x += 1;
+                        complete();
+                    }.bind(this), timeout);
+                };
+            }
+
+            function f_(timeout) {
+                return $do(f(timeout));
+            }
+
+            var c = complete(
+                f_(10),
+                f_(5),
+                f_(20),
+                $DO(function(complete) { complete(); })
+            );
+
+            var ctx = { x: 0 };
+            c.call(ctx);
+
+            waits(15);
+
+            runs(function () {
+                // not 3 as in previous test, since 3 didn't execute yet
+                expect(ctx.x).toBe(2);
             });
         });
     });

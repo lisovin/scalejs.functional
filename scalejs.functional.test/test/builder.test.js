@@ -100,49 +100,14 @@ define([
 
             testBuilder = builder({
                 zero: function () {
-                    return 'test';
                 }
             });
 
             test = testBuilder();
 
-            expect(test(
+            test(
                 $let('foo', 5),
-                function () { op(this.foo); })).toBe('test');
-            expect(op).toHaveBeenCalledWith(5);
-        });
-
-        it('bound value can be referenced in JS expressions.', function () {
-            var testBuilder, test, t, op = jasmine.createSpy();
-
-            testBuilder = builder({
-                zero: function () {
-                    return 'test';
-                }
-            });
-
-            test = testBuilder();
-
-            expect(test(
-                $let('foo', 5),
-                function () { op(this.foo); })).toBe('test');
-            expect(op).toHaveBeenCalledWith(5);
-        });
-
-        it('bound value can be referenced in JS expressions.', function () {
-            var testBuilder, test, t, op = jasmine.createSpy();
-
-            testBuilder = builder({
-                zero: function () {
-                    return 'test';
-                }
-            });
-
-            test = testBuilder();
-
-            expect(test(
-                $let('foo', 5),
-                function () { op(this.foo); })).toBe('test');
+                function () { op(this.foo); });
             expect(op).toHaveBeenCalledWith(5);
         });
 
@@ -418,6 +383,8 @@ define([
             expect(a).toEqual([0, 1, 2, 2, 4, 5]);
         });
 
+
+
         it('`$if` filters values.', function () {
             var arrayBuilder, array, a;
 
@@ -565,7 +532,7 @@ define([
 
             maybeBuilder = builder({
                 bind: function (x, f) {
-                    var v = x.call(this);
+                    var v = x();
                     console.log('--->v: ', v);
 
                     if (v === undefined) {
@@ -653,7 +620,6 @@ define([
 
             traceBuilder = builder({
                 bind: function (x, f) {
-                    console.log(f);
                     if (x === undefined) {
                         console.log('--->$leting with undefined. exiting.');
                         return undefined;
@@ -702,8 +668,8 @@ define([
                     };
                 },
 
-                $return: function (f) {
-                    return f();
+                $return: function (x) {
+                    return x;
                 }
             });
 
@@ -749,8 +715,8 @@ define([
                     };
                 },
 
-                $return: function (f) {
-                    return f();
+                $return: function (x) {
+                    return x;
                 }
             });
 
