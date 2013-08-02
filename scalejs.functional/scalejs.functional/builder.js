@@ -9,7 +9,8 @@ define(function () {
     function builder(opts) {
         var build,
             self,
-            callExpr;
+            callExpr,
+            combine;
 
         callExpr = function (expr) {
             if (!expr || expr.kind !== '$') {
@@ -27,7 +28,7 @@ define(function () {
             throw new Error('Parameter in $(...) must be either a function or a string referencing a binding.');
         };
 
-        function combine(method, expr, cexpr) {
+        combine = function (method, expr, cexpr) {
             function isReturnLikeMethod(method) {
                 return method === '$return' ||
                         method === '$RETURN' ||
@@ -84,7 +85,7 @@ define(function () {
                                     'defines a `delay` method.');
                 }
 
-                e = self.$while(expr.condition.bind(self), self.delay(function () {
+                e = self.$while(expr.condition.bind(this), self.delay(function () {
                     var //contextCopy = clone(context),
                         cexprCopy = Array.prototype.slice.call(expr.cexpr);
                     return build(cexprCopy);
@@ -104,7 +105,7 @@ define(function () {
             }
 
             return self.combine(self[method](e), build(cexpr));
-        }
+        };
 
         if (!opts.missing) {
             opts.missing = function (expr) {

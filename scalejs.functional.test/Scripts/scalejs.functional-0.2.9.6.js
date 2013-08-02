@@ -154,7 +154,8 @@ define('scalejs.functional/builder',[],function () {
     function builder(opts) {
         var build,
             self,
-            callExpr;
+            callExpr,
+            combine;
 
         callExpr = function (expr) {
             if (!expr || expr.kind !== '$') {
@@ -172,7 +173,7 @@ define('scalejs.functional/builder',[],function () {
             throw new Error('Parameter in $(...) must be either a function or a string referencing a binding.');
         };
 
-        function combine(method, expr, cexpr) {
+        combine = function (method, expr, cexpr) {
             function isReturnLikeMethod(method) {
                 return method === '$return' ||
                         method === '$RETURN' ||
@@ -229,7 +230,7 @@ define('scalejs.functional/builder',[],function () {
                                     'defines a `delay` method.');
                 }
 
-                e = self.$while(expr.condition.bind(self), self.delay(function () {
+                e = self.$while(expr.condition.bind(this), self.delay(function () {
                     var //contextCopy = clone(context),
                         cexprCopy = Array.prototype.slice.call(expr.cexpr);
                     return build(cexprCopy);
@@ -249,7 +250,7 @@ define('scalejs.functional/builder',[],function () {
             }
 
             return self.combine(self[method](e), build(cexpr));
-        }
+        };
 
         if (!opts.missing) {
             opts.missing = function (expr) {

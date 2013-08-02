@@ -41,8 +41,8 @@ define([
 
         run: function (f) {
             return function (completed) {
-                var delayed = f.bind(this)().bind(this);
-                delayed(completed);
+                var delayed = f.call(this);
+                delayed.call(this, completed);
             };
         }
     });
