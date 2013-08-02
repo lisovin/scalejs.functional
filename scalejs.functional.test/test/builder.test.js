@@ -95,6 +95,44 @@ define([
             expect(op.callCount).toBe(3);
         });
 
+        it('single $DO with no $return throws an exception', function () {
+            var testBuilder, test;
+
+            testBuilder = builder({
+                bind: function (x, f) {
+                    return x(f);
+                }
+            });
+
+            test = testBuilder();
+
+            expect(function () { test($DO(function () { })); }).toThrow();
+        });
+
+        it('single $DO', function () {
+            var testBuilder,
+                test,
+                x = 0,
+                t;
+
+            testBuilder = builder({
+                bind: function (x, f) {
+                    return x(f);
+                },
+                $return: function (x) {
+                    return x;
+                }
+            });
+
+            test = testBuilder();
+
+            t = test(
+                $DO(function () { x += 1; })
+            );
+
+            expect(x).toBe(1);
+        });
+
         it('bound value can be referenced in JS expressions.', function () {
             var testBuilder, test, t, op = jasmine.createSpy();
 
@@ -342,6 +380,40 @@ define([
             expect(a).toEqual(['foo', 1, 3, 10, 'bar']);
         });
 
+        it('$YIELD of nested computation expression', function () {
+            var arrayBuilder, array, a;
+
+            arrayBuilder = builder({
+                delay: function (f) {
+                    return f();
+                },
+
+                combine: function (x, xs) {
+                    return x.concat(xs);
+                },
+
+                $yield: function (x) {
+                    return [x];
+                },
+
+                $YIELD: function (xs) {
+                    return xs;
+                }
+            });
+
+            array = arrayBuilder();
+            a = array(
+                $yield('foo'),
+                $YIELD(array(
+                    $yield(1),
+                    $yield(3),
+                    $yield(10)
+                )),
+                $yield('bar')
+            );
+
+            expect(a).toEqual(['foo', 1, 3, 10, 'bar']);
+        });
         it('`$for` generates correct values.', function () {
             var arrayBuilder, array, a;
 

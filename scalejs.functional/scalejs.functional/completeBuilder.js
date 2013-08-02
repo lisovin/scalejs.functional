@@ -7,7 +7,10 @@ define([
 ) {
     'use strict';
 
-    var completeBuilder = builder({
+    var completeBuilder,
+        complete;
+
+    completeBuilder = builder({
         bind: function (f, g) {
             // `f` is a function that would invoke a callback once they are completed.
             // E.g.:
@@ -47,5 +50,16 @@ define([
         }
     });
 
-    return completeBuilder();
+    complete = completeBuilder().mixin({
+        beforeBuild: function (ops) {
+            //console.log('--->INTERCEPTED!', ops);
+            ops.forEach(function (op, i) {
+                if (typeof op === 'function') {
+                    ops[i] = builder.$DO(op);
+                }
+            });
+        }
+    });
+
+    return complete;
 });

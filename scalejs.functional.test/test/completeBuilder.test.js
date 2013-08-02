@@ -25,7 +25,46 @@ define([
         $ = core.functional.builder.$;
 
     describe('complete builder', function () {
-        it('basic', function () {
+        it('return of function makes it completable', function () {
+            var count = 0,
+                completable;
+
+            function doSomething() {
+                console.log('did something');
+                count += 1;
+            }
+
+            completable = complete($return(doSomething));
+
+            completable(function () {
+                console.log('completed');
+                count += 1;
+            });
+
+            expect(count).toBe(2);
+        });
+
+        it('single function as an argument makes it completable', function () {
+            var count = 0,
+                completable;
+
+            function doSomething(completed) {
+                console.log('did something');
+                count += 1;
+                completed();
+            }
+
+            completable = complete(doSomething);
+
+            completable(function () {
+                console.log('completed');
+                count += 1;
+            });
+
+            expect(count).toBe(2);
+        });
+
+        it('basic with $DO', function () {
             var x = 0;
 
             function f(timeout, complete) {
@@ -44,6 +83,36 @@ define([
                 f_(10),
                 f_(5),
                 f_(20)
+            );
+
+            c(function (r) {
+                console.log('--->final x:', x, ', final r:', r);
+            });
+
+            waits(100);
+
+            runs(function () {
+                expect(x).toBe(3);
+            });
+        });
+
+        it('basic without $DO', function () {
+            var x = 0;
+
+            function f(timeout) {
+                return function (complete) {
+                    setTimeout(function () {
+                        console.log('--->new x:', x);
+                        x += 1;
+                        complete(x);
+                    }, timeout);
+                };
+            }
+
+            var c = complete(
+                f(10),
+                f(5),
+                f(20)
             );
 
             c(function (r) {
