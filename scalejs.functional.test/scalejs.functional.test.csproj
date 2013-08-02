@@ -28,7 +28,8 @@
     <Content Include="Scripts\scalejs-0.2.7.30.min.js" />
     <Content Include="Scripts\scalejs.functional-0.2.9.1.js" />
     <Content Include="Scripts\scalejs.functional-0.2.9.3.js" />
-    <Content Include="Scripts\scalejs.functional-0.2.9.3.min.js" />
+    <Content Include="Scripts\scalejs.functional-0.2.9.4.js" />
+    <Content Include="Scripts\scalejs.functional-0.2.9.4.min.js" />
     <Content Include="test\all.tests.js" />
     <Content Include="test\builder.test.js" />
     <Content Include="test\completeBuilder.test.js" />

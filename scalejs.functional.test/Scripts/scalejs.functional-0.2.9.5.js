@@ -148,17 +148,8 @@ define('scalejs.functional/functional',[],function () {
 /**
  * Based on F# computation expressions http://msdn.microsoft.com/en-us/library/dd233182.aspx
  **/
-define('scalejs.functional/builder',[
-    'scalejs!core'
-], function (
-    core
-) {
+define('scalejs.functional/builder',[],function () {
     
-
-    var //merge = core.object.merge,
-        //clone = core.object.clone,
-        array = core.array;
-
 
     function builder(opts) {
         var build,
@@ -225,7 +216,7 @@ define('scalejs.functional/builder',[
             // if it's not a return then simply combine the operations (e.g. no `delay` needed)
             if (method === '$for') {
                 return self.combine(self.$for(expr.items, function (item) {
-                    var cexpr = array.copy(expr.cexpr);
+                    var cexpr = Array.prototype.slice.call(expr.cexpr);
                     //ctx = merge(context);
                     this[expr.name] = item;
                     return build(cexpr);
@@ -240,7 +231,7 @@ define('scalejs.functional/builder',[
 
                 e = self.$while(expr.condition.bind(self), self.delay(function () {
                     var //contextCopy = clone(context),
-                        cexprCopy = array.copy(expr.cexpr);
+                        cexprCopy = Array.prototype.slice.call(expr.cexpr);
                     return build(cexprCopy);
                 }));
 
@@ -253,7 +244,7 @@ define('scalejs.functional/builder',[
 
             if (method === '$then' || method === '$else') {
                 //contextCopy = clone(context);
-                cexprCopy = array.copy(expr.cexpr);
+                cexprCopy = Array.prototype.slice.call(expr.cexpr);
                 return self.combine(build(cexprCopy), cexpr);
             }
 
@@ -275,7 +266,7 @@ define('scalejs.functional/builder',[
         build = function (cexpr) {
             var expr;
 
-            cexpr = array.copy(cexpr);
+            cexpr = Array.prototype.slice.call(cexpr);
 
             if (cexpr.length === 0) {
                 if (self.zero) {
@@ -359,7 +350,7 @@ define('scalejs.functional/builder',[
         };
 
         return function () {
-            var args = array.copy(arguments),
+            var args = Array.prototype.slice.call(arguments),
                 expression = function () {
                     var operations = Array.prototype.slice.call(arguments, 0),
                         result,
