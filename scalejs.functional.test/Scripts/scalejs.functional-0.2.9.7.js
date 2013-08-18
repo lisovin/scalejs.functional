@@ -159,7 +159,7 @@ define('scalejs.functional/builder',[],function () {
 
         callExpr = function (expr) {
             if (!expr || expr.kind !== '$') {
-                return typeof expr === 'function' ? expr.call(this) : expr;
+                return expr;
             }
 
             if (typeof expr.expr === 'function') {
@@ -607,6 +607,9 @@ define('scalejs.functional/completeBuilder',[
         $return: function (x) {
             return function (completed) {
                 if (completed) {
+                    if (typeof x === 'function') {
+                        x = x();
+                    }
                     completed(x);
                 }
             };

@@ -33,6 +33,9 @@ define([
         $return: function (x) {
             return function (completed) {
                 if (completed) {
+                    if (typeof x === 'function') {
+                        x = x();
+                    }
                     completed(x);
                 }
             };
