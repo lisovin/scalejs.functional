@@ -4,7 +4,7 @@ define([
     'scalejs!application',
     './functional.test',
     './builder.test',
-    './completeBuilder.test'
+    './continuationBuilder.test'
 ], function () {
     'use strict';
 

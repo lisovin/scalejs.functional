@@ -7,7 +7,7 @@ define([
 ], function (core) {
     'use strict';
 
-    var complete = core.functional.builders.complete,
+    var continuation = core.functional.builders.continuation,
         curry = core.functional.curry,
         $let = core.functional.builder.$let,
         $LET = core.functional.builder.$LET,
@@ -24,7 +24,7 @@ define([
         $while = core.functional.builder.$while,
         $ = core.functional.builder.$;
 
-    describe('complete builder', function () {
+    describe('continuation builder', function () {
         it('return of function makes it completable', function () {
             var count = 0,
                 completable;
@@ -34,10 +34,10 @@ define([
                 count += 1;
             }
 
-            completable = complete($return(doSomething));
+            completable = continuation($return(doSomething));
 
             completable(function () {
-                console.log('completed');
+                console.log('continuationd');
                 count += 1;
             });
 
@@ -48,16 +48,16 @@ define([
             var count = 0,
                 completable;
 
-            function doSomething(completed) {
+            function doSomething(continuationd) {
                 console.log('did something');
                 count += 1;
-                completed();
+                continuationd();
             }
 
-            completable = complete(doSomething);
+            completable = continuation(doSomething);
 
             completable(function () {
-                console.log('completed');
+                console.log('continuationd');
                 count += 1;
             });
 
@@ -67,11 +67,11 @@ define([
         it('basic with $DO', function () {
             var x = 0;
 
-            function f(timeout, complete) {
+            function f(timeout, continuation) {
                 setTimeout(function () {
                     console.log('--->new x:', x);
                     x += 1;
-                    complete(x);
+                    continuation(x);
                 }, timeout);
             }
 
@@ -79,7 +79,7 @@ define([
                 return $DO(curry(f)(timeout));
             }
 
-            var c = complete(
+            var c = continuation(
                 f_(10),
                 f_(5),
                 f_(20)
@@ -100,16 +100,16 @@ define([
             var x = 0;
 
             function f(timeout) {
-                return function (complete) {
+                return function (continuation) {
                     setTimeout(function () {
                         console.log('--->new x:', x);
                         x += 1;
-                        complete(x);
+                        continuation(x);
                     }, timeout);
                 };
             }
 
-            var c = complete(
+            var c = continuation(
                 f(10),
                 f(5),
                 f(20)
@@ -126,14 +126,14 @@ define([
             });
         });
 
-        it('calling without `complete`', function () {
+        it('calling without `continuation`', function () {
             var x = 0;
 
-            function f(timeout, complete) {
+            function f(timeout, continuation) {
                 setTimeout(function () {
                     console.log('--->new x:', x);
                     x += 1;
-                    complete();
+                    continuation();
                 }, timeout);
             }
 
@@ -141,7 +141,7 @@ define([
                 return $DO(curry(f)(timeout));
             }
 
-            var c = complete(
+            var c = continuation(
                 f_(10),
                 f_(5),
                 f_(20)
@@ -160,16 +160,16 @@ define([
             var x = 0,
                 start = new Date().getTime();
 
-            function f(timeout, complete) {
+            function f(timeout, continuation) {
                 setTimeout(function () {
                     console.log('--->before x++:', x, new Date().getTime() - start);
                     x += 1;
                     console.log('--->after x++:', x, new Date().getTime() - start);
-                    complete(x);
+                    continuation(x);
                 }, timeout);
             }
 
-            var c = complete(
+            var c = continuation(
                 $DO(curry(f)(10)),
                 $do(function () { 
                     console.log('--->$do:', x, new Date().getTime() - start);
@@ -188,10 +188,10 @@ define([
         });
 
         it('`this` is maintained throught the chain of `$DO`-s.', function () {
-            function f(timeout, complete) {
+            function f(timeout, continuation) {
                 setTimeout(function () {
                     this.x += 1;
-                    complete();
+                    continuation();
                 }.bind(this), timeout);
             }
 
@@ -199,7 +199,7 @@ define([
                 return $DO(curry(f)(timeout));
             }
 
-            var c = complete(
+            var c = continuation(
                 f_(10),
                 f_(5),
                 f_(20)
@@ -220,7 +220,7 @@ define([
                 return function () {
                     setTimeout(function () {
                         this.x += 1;
-                        complete();
+                        continuation();
                     }.bind(this), timeout);
                 };
             }
@@ -229,11 +229,11 @@ define([
                 return $do(f(timeout));
             }
 
-            var c = complete(
+            var c = continuation(
                 f_(10),
                 f_(5),
                 f_(20),
-                $DO(function(complete) { complete(); })
+                $DO(function(continuation) { continuation(); })
             );
 
             var ctx = { x: 0 };
@@ -244,6 +244,47 @@ define([
             runs(function () {
                 // not 3 as in previous test, since 3 didn't execute yet
                 expect(ctx.x).toBe(2);
+            });
+        });
+
+        it('onError is called', function () {
+            function f(timeout) {
+                return function (onSuccess, onError) {
+                    setTimeout(function () {
+                        if (this.x === 0) {
+                            this.x += 1;
+                            onSuccess();
+                        } else {
+                            onError({ message: 'x is already greater than 0' });
+                        }
+                    }.bind(this), timeout);
+                };
+            }
+
+            function f_(timeout) {
+                return $DO(f(timeout));
+            }
+
+            var c = continuation(
+                f_(10),
+                f_(5),
+                f_(20)
+            );
+
+            var ctx = { x: 0 },
+                error;
+
+            c.call(ctx, function () { }, function (ex) {
+                console.log(ex);
+                error = ex;
+            });
+
+            waits(40);
+
+            runs(function () {
+                expect(ctx.x).toBe(1);
+                expect(error).toBeDefined();
+                expect(error.message).toBe('x is already greater than 0');
             });
         });
     });

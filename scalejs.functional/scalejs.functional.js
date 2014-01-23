@@ -3,12 +3,12 @@ define([
     'scalejs!core',
     './scalejs.functional/functional',
     './scalejs.functional/builder',
-    './scalejs.functional/completeBuilder'
+    './scalejs.functional/continuationBuilder'
 ], function (
     core,
     functional,
     builder,
-    complete
+    continuation
 ) {
     'use strict';
 
@@ -18,7 +18,7 @@ define([
         functional: merge(functional, {
             builder: builder,
             builders: {
-                complete: complete
+                continuation: continuation
             }
         })
     });

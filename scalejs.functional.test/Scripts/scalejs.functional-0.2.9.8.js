@@ -596,21 +596,21 @@ define('scalejs.functional/completeBuilder',[
             // `g` is a function that needs to be bound to result of `f` and its result should have the same signature as `f`
             // 
             // To bind them we should return a function `h` with same signature such as `f`
-            return function (completed) {
+            return function (onSuccess, onError) {
                 f(function (fResult) {
                     var rest = g(fResult);
-                    return rest(completed);
-                });
+                    return rest(onSuccess, onError);
+                }, onError);
             };
         },
 
         $return: function (x) {
-            return function (completed) {
-                if (completed) {
+            return function (onSuccess, onError) {
+                if (onSuccess) {
                     if (typeof x === 'function') {
                         x = x();
                     }
-                    completed(x);
+                    onSuccess(x);
                 }
             };
         },
@@ -620,9 +620,9 @@ define('scalejs.functional/completeBuilder',[
         },
 
         run: function (f) {
-            return function (completed) {
+            return function (onSuccess, onError) {
                 var delayed = f.call(this);
-                delayed.call(this, completed);
+                delayed.call(this, onSuccess, onError);
             };
         }
     });
