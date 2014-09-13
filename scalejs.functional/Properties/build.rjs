@@ -1,7 +1,0 @@
-﻿({
-	mainConfigFile: '../config.js',
-    include: 'scalejs.functional',
-    exclude: [
-        'scalejs!core'
-    ]
-})
