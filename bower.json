@@ -15,6 +15,9 @@
         "dist/scalejs.functional.js",
         "dist/scalejs.functional.min.js"
     ],
+    "ignore": [
+        "*"
+    ],
     "keywords": [
         "javascript",
         "scalejs",
