@@ -6,13 +6,11 @@
         "Peter Lisovin <peter@lisovin.com>"
     ],
     "description": "Functional programming extension for scalable JavaScript application",
-    "version": "0.4.0",
     "dependencies": {
         "scalejs": "lisovin/scalejs",
         "requirejs": "~2.1.15"
     },
     "main": [
-        "dist/scalejs.functional.js",
         "dist/scalejs.functional.min.js"
     ],
     "ignore": [
